@@ -1,0 +1,15 @@
+[project]
+name = "portland-oregon-map"
+version = "0.1.0"
+description = "An interactive map of Portland, Oregon with its own idea of what deserves a label"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.12.1",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["pipeline"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

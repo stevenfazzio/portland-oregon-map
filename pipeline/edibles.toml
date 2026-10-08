@@ -1,0 +1,287 @@
+# What grows in Portland that is worth picking, and when.
+#
+# `months` is when the fruit or nut is usually ready in Portland (1 = January).
+#
+# Two lists: [[species]] are street trees from the city inventory, and [[wild]],
+# further down, are berries and nuts seen growing wild by iNaturalist observers.
+
+# Street trees, keyed by the names the city inventory uses. Their windows are
+# approximate and have not been checked against a local source.
+#
+# Left out on purpose: the inventory's generic "cherry" (mostly ornamental),
+# flowering plums and pears, crabapples, hawthorns and mountain ash.
+
+[[species]]
+label = "Fig"
+inventory_names = ["common fig"]
+months = [8, 9, 10]
+
+[[species]]
+label = "Persimmon"
+inventory_names = ["persimmon", "American persimmon"]
+months = [10, 11, 12]
+
+[[species]]
+label = "Strawberry tree"
+inventory_names = ["strawberry tree", "Marina strawberry tree"]
+months = [9, 10, 11, 12]
+
+[[species]]
+label = "Pawpaw"
+inventory_names = ["paw paw"]
+months = [9, 10]
+
+[[species]]
+label = "Jujube"
+inventory_names = ["jujube"]
+months = [9, 10]
+
+[[species]]
+label = "Medlar"
+inventory_names = ["medlar"]
+months = [11, 12]
+
+[[species]]
+label = "Pineapple guava"
+inventory_names = ["pineapple guava"]
+months = [10, 11]
+
+[[species]]
+label = "Quince"
+inventory_names = ["quince"]
+months = [10, 11]
+
+[[species]]
+label = "Loquat"
+inventory_names = ["loquat spp.", "loquat"]
+months = [5, 6]
+
+[[species]]
+label = "Mulberry"
+inventory_names = ["mulberry spp."]
+months = [6, 7]
+
+[[species]]
+label = "Serviceberry"
+inventory_names = ["serviceberry", "Spring Flurry serviceberry"]
+months = [6, 7]
+
+[[species]]
+label = "Sweet cherry"
+inventory_names = ["sweet cherry"]
+months = [6, 7]
+
+[[species]]
+label = "Apricot"
+inventory_names = ["apricot"]
+months = [7]
+
+[[species]]
+label = "Peach"
+inventory_names = ["peach", "nectarine"]
+months = [7, 8]
+
+[[species]]
+label = "Plum"
+inventory_names = ["plum"]
+months = [7, 8, 9]
+
+[[species]]
+label = "Apple"
+inventory_names = ["apple", "Yellow Bellflower apple"]
+months = [8, 9, 10]
+
+[[species]]
+label = "Pear"
+inventory_names = ["pear", "European pear", "Bartlett European pear"]
+months = [8, 9]
+
+[[species]]
+label = "Asian pear"
+inventory_names = ["Asian pear"]
+months = [8, 9, 10]
+
+[[species]]
+label = "Cornelian cherry"
+inventory_names = ["cornelian cherry dogwood"]
+months = [8, 9]
+
+[[species]]
+label = "Kousa dogwood"
+inventory_names = ["kousa dogwood"]
+months = [9, 10]
+
+[[species]]
+label = "Olive"
+inventory_names = ["olive"]
+months = [10, 11]
+
+[[species]]
+label = "Almond"
+inventory_names = ["almond"]
+months = [9]
+
+[[species]]
+label = "Hazelnut"
+inventory_names = ["hazel or hazelnut", "hazel, filbert", "Turkish hazel"]
+months = [8, 9]
+
+[[species]]
+label = "Chestnut"
+inventory_names = [
+  "chestnut",
+  "Spanish chestnut",
+  "Colossal hybrid chestnut",
+  "Marrone Di Susa chestnut",
+]
+months = [9, 10]
+
+[[species]]
+label = "Walnut"
+inventory_names = ["English walnut", "walnut"]
+months = [9, 10]
+
+[[species]]
+label = "Black walnut"
+inventory_names = ["black walnut"]
+months = [10]
+
+[[species]]
+label = "Pecan"
+inventory_names = ["pecan"]
+months = [10, 11]
+
+# Wild berries and nuts, from iNaturalist.
+#
+# `taxon_id` is iNaturalist's number for the species in `latin`; fetch_berries.py
+# checks that the two still agree. `weight` (0 to 1) is how worth picking the
+# species is. It counts toward how early a patch appears on the map, alongside
+# how many people have recorded the plant there.
+#
+# The windows were set by hand, then compared with the months in which observers
+# within 40 km recorded each species in fruit (fetch_berries.py prints the table).
+# Those records count unripe fruit too, so they begin about a month before the
+# windows here. Woodland strawberry, evergreen huckleberry and spreading
+# gooseberry have too few such records to compare.
+#
+# Left out on purpose: red elderberry (unsafe raw), red-flowering currant and
+# black hawthorn (edible but poor), rose hips, Pacific crabapple and bitter cherry.
+
+[[wild]]
+label = "Osoberry"
+latin = "Oemleria cerasiformis"
+taxon_id = 53419
+months = [5, 6]
+weight = 0.3
+
+[[wild]]
+label = "Salmonberry"
+latin = "Rubus spectabilis"
+taxon_id = 47543
+months = [5, 6]
+weight = 0.7
+
+[[wild]]
+label = "Woodland strawberry"
+latin = "Fragaria vesca"
+taxon_id = 50298
+months = [5, 6]
+weight = 0.8
+
+[[wild]]
+label = "Spreading gooseberry"
+latin = "Ribes divaricatum"
+taxon_id = 53448
+months = [6, 7]
+weight = 0.6
+
+[[wild]]
+label = "Western serviceberry"
+latin = "Amelanchier alnifolia"
+taxon_id = 75415
+months = [6, 7]
+weight = 0.8
+
+[[wild]]
+label = "Thimbleberry"
+latin = "Rubus parviflorus"
+taxon_id = 51646
+months = [6, 7]
+weight = 0.9
+
+[[wild]]
+label = "Blackcap raspberry"
+latin = "Rubus leucodermis"
+taxon_id = 63960
+months = [6, 7]
+weight = 1.0
+
+[[wild]]
+label = "Trailing blackberry"
+latin = "Rubus ursinus"
+taxon_id = 53445
+months = [6, 7]
+weight = 1.0
+
+[[wild]]
+label = "Red huckleberry"
+latin = "Vaccinium parvifolium"
+taxon_id = 48354
+months = [7, 8]
+weight = 0.9
+
+[[wild]]
+label = "Tall Oregon grape"
+latin = "Berberis aquifolium"
+taxon_id = 126887
+months = [7, 8, 9]
+weight = 0.4
+
+[[wild]]
+label = "Cascade Oregon grape"
+latin = "Berberis nervosa"
+taxon_id = 75756
+months = [7, 8, 9]
+weight = 0.4
+
+[[wild]]
+label = "Salal"
+latin = "Gaultheria shallon"
+taxon_id = 48441
+months = [8, 9]
+weight = 0.6
+
+[[wild]]
+label = "Himalayan blackberry"
+latin = "Rubus armeniacus"
+taxon_id = 61317
+months = [8, 9]
+weight = 1.0
+
+[[wild]]
+label = "Cutleaf blackberry"
+latin = "Rubus laciniatus"
+taxon_id = 78891
+months = [8, 9]
+weight = 0.9
+
+[[wild]]
+label = "Blue elderberry"
+latin = "Sambucus cerulea"
+taxon_id = 143799
+months = [8, 9]
+weight = 0.6
+
+[[wild]]
+label = "Beaked hazelnut"
+latin = "Corylus cornuta"
+taxon_id = 53374
+months = [8, 9]
+weight = 0.6
+
+[[wild]]
+label = "Evergreen huckleberry"
+latin = "Vaccinium ovatum"
+taxon_id = 48349
+months = [9, 10, 11]
+weight = 0.9

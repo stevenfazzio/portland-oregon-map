@@ -1,0 +1,273 @@
+# How OpenStreetMap places are sorted into categories, and how much each
+# category counts toward a place's prominence on the map.
+#
+# Categories are tried top to bottom and the first match wins. A category
+# matches when any one of its `match` tables does; within a table every key
+# must match, and a list means "any of these values". Tags that hold several
+# values (cuisine = "pizza;italian") match if any one value does.
+#
+#   weight  0 to 1: the category's share of the prominence score
+#   floor   the lowest zoom at which the category may appear at all
+#
+# The weights decide which categories surface first; they say nothing about
+# which place is best within a category. Where pipeline/rank.py has scored a
+# place, its fit score (0 to 1 on the same scale) is used instead of the weight.
+
+[scoring]
+chain_factor = 0.35   # multiplier for places carrying a brand tag
+chain_floor = 15      # chains never appear before this zoom
+notable_bonus = 0.15  # has a Wikidata or Wikipedia link
+detail_bonus = 0.10   # scaled by how thoroughly the place is tagged
+cell_px = 110         # the map is cut into cells of this many pixels at each zoom
+per_cell = 2          # places admitted per cell; a busy street needs more than one
+# Trees and berry patches get one to a cell this size. They fill residential
+# blocks where nothing competes with them, so at the same spacing as places
+# they crowd the map.
+plant_cell_px = 440
+# A place scoring at least the first number is shown by the zoom in the second,
+# however crowded its cell. Otherwise the third-best place on a strong block
+# would wait behind weaker places elsewhere.
+admit_by = [[0.80, 13], [0.65, 14], [0.50, 15]]
+last_zoom = 17        # everything left over appears one zoom after this
+
+[[category]]
+id = "record_shop"
+label = "Record shop"
+family = "music_screen"
+weight = 0.4
+floor = 13
+match = [{ shop = "music" }]
+
+[[category]]
+id = "video_shop"
+label = "Video shop"
+family = "music_screen"
+weight = 0.6
+floor = 12
+match = [{ shop = "video" }]
+
+[[category]]
+id = "music_venue"
+label = "Music venue"
+family = "music_screen"
+weight = 1.0
+floor = 11
+match = [{ amenity = "music_venue" }, { live_music = "yes" }]
+
+[[category]]
+id = "cinema"
+label = "Cinema"
+family = "music_screen"
+weight = 0.6
+floor = 12
+match = [{ amenity = "cinema" }]
+
+[[category]]
+id = "karaoke"
+label = "Karaoke"
+family = "music_screen"
+weight = 0.6
+floor = 12
+match = [{ amenity = "karaoke_box" }, { karaoke = "yes" }]
+
+[[category]]
+id = "comedy"
+label = "Comedy"
+family = "music_screen"
+weight = 0.6
+floor = 12
+match = [{ amenity = "theatre", "theatre:genre" = "comedy" }]
+
+[[category]]
+id = "theatre"
+label = "Theatre"
+family = "music_screen"
+weight = 0.35
+floor = 13
+match = [{ amenity = "theatre" }]
+
+[[category]]
+id = "arcade"
+label = "Arcade"
+family = "music_screen"
+weight = 0.25
+floor = 14
+match = [{ leisure = "amusement_arcade" }]
+
+[[category]]
+id = "market"
+label = "Market"
+family = "shops"
+weight = 1.0
+floor = 11
+match = [{ amenity = "marketplace" }]
+
+[[category]]
+id = "japanese"
+label = "Japanese"
+family = "food"
+weight = 1.0
+floor = 11
+match = [
+  { amenity = ["restaurant", "fast_food", "bar", "pub", "cafe"], cuisine = ["japanese", "sushi", "ramen", "izakaya", "udon", "soba", "yakitori", "okonomiyaki", "onigiri"] },
+]
+
+[[category]]
+id = "bakery"
+label = "Bakery"
+family = "food"
+weight = 1.0
+floor = 11
+match = [
+  { shop = ["bakery", "pastry"] },
+  { cuisine = ["bagel", "pie", "pastry", "donut", "doughnut"] },
+]
+
+[[category]]
+id = "pizza"
+label = "Pizza"
+family = "food"
+weight = 0.6
+floor = 12
+match = [{ cuisine = "pizza" }]
+
+[[category]]
+id = "specialty_grocer"
+label = "Grocer"
+family = "shops"
+weight = 1.0
+floor = 11
+match = [
+  { shop = ["greengrocer", "health_food", "farm", "deli", "cheese", "butcher", "seafood", "spices", "tea", "coffee", "pasta"] },
+]
+
+[[category]]
+id = "supermarket"
+label = "Supermarket"
+family = "shops"
+weight = 0.5
+floor = 13
+match = [{ shop = "supermarket" }]
+
+[[category]]
+id = "bottle_shop"
+label = "Bottle shop"
+family = "drink"
+weight = 0.6
+floor = 12
+match = [{ shop = ["alcohol", "wine", "beverages"] }]
+
+[[category]]
+id = "brewery"
+label = "Brewery"
+family = "drink"
+weight = 0.5
+floor = 13
+match = [{ craft = "brewery" }, { microbrewery = "yes" }]
+
+[[category]]
+id = "bar"
+label = "Bar"
+family = "drink"
+weight = 0.6
+floor = 12
+match = [{ amenity = "bar" }]
+
+[[category]]
+id = "pub"
+label = "Pub"
+family = "drink"
+weight = 0.5
+floor = 13
+match = [{ amenity = "pub" }]
+
+[[category]]
+id = "cafe"
+label = "Café"
+family = "drink"
+weight = 0.6
+floor = 12
+match = [{ amenity = "cafe" }]
+
+[[category]]
+id = "second_hand"
+label = "Second-hand"
+family = "shops"
+weight = 0.4
+floor = 13
+match = [{ shop = ["second_hand", "charity"] }, { second_hand = ["yes", "only"] }]
+
+[[category]]
+id = "books"
+label = "Bookshop"
+family = "shops"
+weight = 0.25
+floor = 14
+match = [{ shop = "books" }]
+
+[[category]]
+id = "ice_cream"
+label = "Ice cream"
+family = "food"
+weight = 0.3
+floor = 14
+match = [{ amenity = "ice_cream" }]
+
+[[category]]
+id = "restaurant"
+label = "Restaurant"
+family = "food"
+weight = 0.3
+floor = 14
+match = [{ amenity = "restaurant" }]
+
+[[category]]
+id = "fast_food"
+label = "Counter food"
+family = "food"
+weight = 0.2
+floor = 15
+match = [{ amenity = "fast_food" }, { amenity = "food_court" }]
+
+[[category]]
+id = "viewpoint"
+label = "Viewpoint"
+family = "landmark"
+weight = 0.5
+floor = 12
+match = [{ tourism = "viewpoint" }]
+
+[[category]]
+id = "stadium"
+label = "Stadium"
+family = "landmark"
+weight = 0.35
+floor = 13
+match = [{ leisure = "stadium" }]
+
+[[category]]
+id = "landmark"
+label = "Landmark"
+family = "landmark"
+weight = 0.35
+floor = 13
+match = [
+  { tourism = ["museum", "attraction", "zoo", "gallery"] },
+  { amenity = ["library", "university", "college", "arts_centre"] },
+]
+
+[[category]]
+id = "park"
+label = "Park"
+family = "landmark"
+weight = 0.3
+floor = 13
+match = [{ leisure = ["park", "nature_reserve", "garden"] }]
+
+[[category]]
+id = "other"
+label = "Other"
+family = "other"
+weight = 0.05
+floor = 17
+match = [{}]

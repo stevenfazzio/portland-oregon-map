@@ -1,0 +1,13 @@
+# Raw fetches: regenerable, but slow and dependent on flaky public servers
+data/raw/
+
+# What build_features.py writes for the page: large, and replaced whole on every build
+site/data/
+
+.venv/
+__pycache__/
+.ruff_cache/
+.DS_Store
+
+# Pairs to judge and the answers given: about one person's taste, kept local
+private/

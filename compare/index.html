@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compare places</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #22262a;
+        --ink-2: #5c6166;
+        --paper: #ffffff;
+        --ground: #f2f3f0;
+        --rule: #d9dbd6;
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 28px 16px 40px;
+        font: 15px/1.45 "Noto Sans", system-ui, sans-serif;
+        color: var(--ink);
+        background: var(--ground);
+      }
+
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 4px;
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      .how {
+        margin: 0 0 20px;
+        color: var(--ink-2);
+      }
+
+      kbd {
+        padding: 0 5px;
+        border: 1px solid var(--rule);
+        border-radius: 4px;
+        background: var(--paper);
+        font: inherit;
+        font-size: 13px;
+      }
+
+      #pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .card:hover {
+        border-color: var(--ink);
+      }
+
+      .card h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1.25;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--ink-2);
+      }
+
+      .card p + p {
+        margin-top: 5px;
+      }
+
+      .card .summary {
+        color: var(--ink);
+      }
+
+      .kind {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .kind::before {
+        content: "";
+        flex: none;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--dot);
+      }
+
+      .links {
+        margin-top: 10px !important;
+      }
+
+      .links a {
+        color: var(--ink);
+        margin-right: 14px;
+      }
+
+      .card button {
+        margin-top: auto;
+      }
+
+      .card .spacer {
+        height: 16px;
+      }
+
+      button {
+        min-height: 44px;
+        padding: 8px 14px;
+        font: inherit;
+        color: var(--ink);
+        background: var(--paper);
+        border: 1px solid var(--ink);
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      button.primary {
+        color: var(--paper);
+        background: var(--ink);
+      }
+
+      button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: 2px;
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .neither {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 22px;
+        padding-top: 14px;
+        border-top: 1px solid var(--rule);
+        color: var(--ink-2);
+      }
+
+      progress {
+        flex: 1;
+        height: 8px;
+        accent-color: var(--ink);
+      }
+
+      #message {
+        margin: 16px 0 0;
+      }
+
+      @media (max-width: 560px) {
+        #pair {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Which should the map show first?</h1>
+      <p class="how">
+        Choose the place that is the better fit. Keys: <kbd>←</kbd> the first, <kbd>→</kbd> the
+        second, <kbd>↓</kbd> about the same, <kbd>S</kbd> can't judge, <kbd>U</kbd> undo.
+      </p>
+
+      <div id="pair"></div>
+      <div class="neither" id="neither">
+        <button type="button" data-choice="same">About the same</button>
+        <button type="button" data-choice="skip">Can't judge</button>
+      </div>
+      <p id="message" role="status"></p>
+
+      <footer>
+        <span id="count"></span>
+        <progress id="bar" value="0" max="1"></progress>
+        <button type="button" id="undo">Undo last answer</button>
+      </footer>
+    </main>
+
+    <script type="module">
+      const DOT = {
+        food: "#eb6834",
+        drink: "#eda100",
+        music_screen: "#2a78d6",
+        shops: "#e87ba4",
+      };
+      const $ = (id) => document.getElementById(id);
+      let current = null;
+      let busy = false;
+
+      function el(tag, props = {}, ...children) {
+        const node = Object.assign(document.createElement(tag), props);
+        node.append(...children);
+        return node;
+      }
+
+      function card(place, choice) {
+        const links = el("p", { className: "links" });
+        if (/^https?:\/\//.test(place.url)) {
+          links.append(el("a", { href: place.url, target: "_blank", rel: "noopener", textContent: "Website" }));
+        }
+        links.append(el("a", { href: place.lookup, target: "_blank", rel: "noopener", textContent: "Look it up" }));
+        const record = place.record;
+        const kind = el("p", { className: "kind", textContent: record?.kind || place.label });
+        kind.style.setProperty("--dot", DOT[place.fam] ?? "#5c6166");
+        const about = [];
+        if (record) {
+          if (record.status === "closed") about.push(el("p", { textContent: "Reported as permanently closed." }));
+          if (record.summary) about.push(el("p", { className: "summary", textContent: record.summary }));
+          if (record.known_for.length) about.push(el("p", { textContent: `Known for ${record.known_for.join(", ")}.` }));
+          if (record.features.length) {
+            about.push(el("p", { textContent: `Has ${record.features.join(", ").replaceAll("_", " ")}.` }));
+          }
+          if (record.press_note) about.push(el("p", { textContent: `Elsewhere: ${record.press_note}` }));
+          if (!record.matches_place) about.push(el("p", { textContent: "No text from its own website; this comes from other sites." }));
+        } else {
+          about.push(el("p", { textContent: "Nothing gathered about this place yet." }));
+        }
+        const node = el(
+          "article",
+          { className: "card" },
+          el("h2", { textContent: place.name }),
+          kind,
+          ...place.details.map((text) => el("p", { textContent: text })),
+          ...about,
+          links,
+          el("div", { className: "spacer" }),
+          // The cards stack on a narrow screen, so the label cannot say left or right.
+          el("button", { type: "button", className: "primary", textContent: "Pick this one" }),
+        );
+        // The whole card is the target, except its links.
+        node.addEventListener("click", (event) => {
+          if (!event.target.closest("a")) answer(choice);
+        });
+        return node;
+      }
+
+      function render(state) {
+        current = state.pair;
+        $("count").textContent = `${state.done} of ${state.total} answered`;
+        $("bar").max = state.total;
+        $("bar").value = state.done;
+        $("undo").disabled = !state.can_undo;
+        $("neither").hidden = !current;
+        $("message").textContent = current
+          ? ""
+          : `All ${state.total} pairs answered. They are saved in private/judgments.jsonl.`;
+        $("pair").replaceChildren(
+          ...(current ? [card(current.a, "a"), card(current.b, "b")] : []),
+        );
+      }
+
+      async function send(path, body) {
+        if (busy) return;
+        busy = true;
+        try {
+          const response = await fetch(path, {
+            method: body ? "POST" : "GET",
+            headers: body ? { "Content-Type": "application/json" } : {},
+            body: body ? JSON.stringify(body) : undefined,
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          render(await response.json());
+        } catch (error) {
+          console.error(error);
+          $("message").textContent =
+            "That did not save. Check that compare/serve.py is still running, then try again.";
+        } finally {
+          busy = false;
+        }
+      }
+
+      function answer(choice) {
+        if (current) send("/api/answer", { pair_id: current.id, choice });
+      }
+
+      for (const button of $("neither").querySelectorAll("button")) {
+        button.addEventListener("click", () => answer(button.dataset.choice));
+      }
+      $("undo").addEventListener("click", () => send("/api/undo", {}));
+      document.addEventListener("keydown", (event) => {
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        const choice = { ArrowLeft: "a", ArrowRight: "b", ArrowDown: "same", s: "skip", S: "skip" }[event.key];
+        if (choice) {
+          event.preventDefault();
+          answer(choice);
+        } else if (event.key === "u" || event.key === "U") {
+          send("/api/undo", {});
+        }
+      });
+
+      send("/api/state");
+    </script>
+  </body>
+</html>
