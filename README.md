@@ -43,8 +43,9 @@ record: what kind of place it is, one sentence about it, what it is known for, a
 features such as live music or a patio. It reads each place's own website and
 searches for other pages that mention it (both through [Exa](https://exa.ai), key
 in `EXA_API_KEY`), then has a Claude model write the record from that text alone
-(key in `ANTHROPIC_API_KEY`). Only what a place's own website supports is shown on
-the map.
+(key in `ANTHROPIC_API_KEY`). A record is shown on the map when the place's own
+website supports it, or when another site is clearly writing about that place.
+`--ids FILE` covers just the places listed in a file, whatever their category.
 
 Every paid call is logged to `private/spend.jsonl`, and each step checks the total
 against the ceiling in `pipeline/budget.py` before it starts. `uv run
@@ -58,6 +59,14 @@ fits the person the map is made for. That description is private: it is read fro
 `private/profile.md`, which is not in this repository, and only the scores reach
 the map. Chain locations are scored from the brand name alone. Without the scores
 the map still builds, ranking by category weight.
+
+A place scoring at least `top_fit` (in `pipeline/categories.toml`) is a top pick:
+its name is bold and its dot larger, so that it still stands out once the map is
+zoomed in far enough for everything around it to show.
+
+`private/corrections.toml`, if it exists, overrides the result by hand: a place
+named there can be given a score, a different category, or a different label.
+`build_features.py` documents the format.
 
 ### Scoring
 
@@ -117,6 +126,8 @@ can be closed and reopened at any point.
 - Berries: [iNaturalist](https://www.inaturalist.org) observations that their
   observers licensed CC0, CC BY or CC BY-NC. Each patch links to the sightings
   behind it, where every observer is credited.
-- Place descriptions: written by a language model from each place's own website.
-  They can be wrong or out of date.
+- Place descriptions: written by a language model from each place's own website
+  and from other sites that write about it. They can be wrong or out of date.
+- Opening hours: as recorded in OpenStreetMap, with the month they were last
+  confirmed where a mapper noted one. Many have no such date and may be stale.
 - Basemap: [OpenFreeMap](https://openfreemap.org), © OpenMapTiles, data from OpenStreetMap.

@@ -9,6 +9,7 @@ Three steps, each cached per place so a rerun only does what is missing:
     uv run pipeline/enrich.py --limit 5     # try a few places first
     uv run pipeline/enrich.py               # everything; safe to stop and rerun
     uv run pipeline/enrich.py --pairs private/pairs.json   # just the places being compared
+    uv run pipeline/enrich.py --ids more.txt               # just the places listed, one id per line
 
 Reads   data/raw/osm_places.json
 Writes  data/raw/enrich/{site,search,record}/<place id>.json
@@ -293,6 +294,9 @@ def main():
     parser.add_argument("--poll", type=int, default=60, help="seconds between batch checks")
     parser.add_argument("--pairs", help="cover only the places in this pairs file")
     parser.add_argument(
+        "--ids", help="cover only the places listed in this file, whatever their category"
+    )
+    parser.add_argument(
         "--now", action="store_true", help="write records one by one, not as a batch"
     )
     args = parser.parse_args()
@@ -307,7 +311,13 @@ def main():
         budget.main()
         return
 
-    places = load_pool()
+    if args.ids:
+        wanted = set(Path(args.ids).read_text().split())
+        places = [p for p in load_pool(wanted) if p["id"] in wanted]
+        if len(places) < len(wanted):
+            print(f"enrich: {len(wanted) - len(places)} ids in {args.ids} match no place")
+    else:
+        places = load_pool()
     with_site = sum(bool(p["url"]) for p in places)
     print(f"enrich: {len(places)} places in scope, {with_site} with a website")
     if args.limit:

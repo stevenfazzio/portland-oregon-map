@@ -8,8 +8,8 @@ so one ordering decides which label wins wherever two would overlap.
 
 Reads   data/raw/osm_places.json, data/raw/street_trees.json,
         data/raw/inat_berries.json, the place records in data/raw/enrich/record/
-        where enrich.py has written them, and the fit scores in private/fit/
-        where rank.py has written them
+        where enrich.py has written them, the fit scores in private/fit/ where
+        rank.py has written them, and private/corrections.toml if there is one
 Writes  site/data/features.geojson, site/data/meta.json
 """
 
@@ -17,6 +17,7 @@ import collections
 import datetime
 import json
 import math
+import re
 import tomllib
 from pathlib import Path
 
@@ -29,6 +30,7 @@ PLACE_KEYS = ("amenity", "shop", "craft", "tourism", "leisure")
 RECORD_DIR = RAW_DIR / "enrich" / "record"
 CLOSED_FLOOR = 17
 FIT_DIR = ROOT / "private" / "fit"
+CORRECTIONS = ROOT / "private" / "corrections.toml"
 PATCH_RADIUS_M = 75  # sightings of one species this close to a centre are one patch
 PATCH_MAX_ACCURACY_M = 100  # a sighting placed more loosely than this cannot mark a patch
 PATCH_FULL_STRENGTH = 12  # observers; more than this adds nothing to a patch's score
@@ -54,6 +56,79 @@ def patch_floor(observers):
     if observers >= 2:
         return 16
     return 17
+
+
+DAY = "(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)"
+SPAN = r"\d\d?:\d\d\s*-\s*\d\d?:\d\d\+?"
+HOURS_RULE = re.compile(
+    rf"^(?P<days>{DAY}(?:\s*[-,]\s*{DAY})*)?\s*"
+    rf"(?P<times>off|closed|{SPAN}(?:\s*,\s*{SPAN})*|\d\d?:\d\d\+)$"
+)
+DAY_NAMES = {
+    "Mo": "Mon",
+    "Tu": "Tue",
+    "We": "Wed",
+    "Th": "Thu",
+    "Fr": "Fri",
+    "Sa": "Sat",
+    "Su": "Sun",
+    "PH": "holidays",
+}
+
+
+def clock(hhmm):
+    """'14:30' as '2:30pm'. OpenStreetMap writes 2 am the next day as 26:00."""
+    hours, minutes = (int(part) for part in hhmm.split(":"))
+    hours %= 24
+    if minutes == 0 and hours in (0, 12):
+        return "midnight" if hours == 0 else "noon"
+    suffix = "am" if hours < 12 else "pm"
+    return (
+        f"{hours % 12 or 12}{suffix}"
+        if minutes == 0
+        else f"{hours % 12 or 12}:{minutes:02d}{suffix}"
+    )
+
+
+def readable_hours(raw):
+    """OpenStreetMap's opening_hours as a line a person can read.
+
+    Covers plain weekly schedules, which is nearly all of them. Anything else
+    (seasons, sunrise, "by appointment") is returned as written.
+    """
+    if raw.strip() == "24/7":
+        return "Daily, 24 hours"
+    lines = []
+    for piece in raw.split(";"):
+        # "Mo-Fr 09:00-18:00, Sa 09:00-13:00": a comma after a time starts a new rule.
+        for rule in re.split(rf"(?<=[\d+]),\s*(?={DAY}\b)", piece.strip()):
+            if not rule:
+                continue
+            match = HOURS_RULE.match(rule.strip())
+            if not match:
+                return raw.strip().strip('"')
+            days = re.sub(r"\s+", "", match["days"] or "Mo-Su")
+            if days == "Mo-Su":
+                days = "Daily"
+            else:
+                days = re.sub(DAY, lambda m: DAY_NAMES[m[0]], days)
+                days = days.replace("-", "–").replace(",", ", ")
+            times = re.sub(r"\s+", "", match["times"])
+            if times in ("off", "closed"):
+                times = "closed"
+            elif times in ("00:00-24:00", "00:00-00:00"):
+                times = "24 hours"
+            else:
+                spans = []
+                for span in times.split(","):
+                    if span.endswith("+") and "-" not in span:
+                        spans.append(f"from {clock(span[:-1])}")
+                    else:
+                        start, end = span.rstrip("+").split("-")
+                        spans.append(f"{clock(start)}–{clock(end)}")
+                times = ", ".join(spans)
+            lines.append(f"{days} {times}")
+    return "; ".join(lines) if lines else raw
 
 
 def load_toml(name):
@@ -110,6 +185,11 @@ def build_places(raw, config):
                 "fam": category["family"],
                 "sub": sub,
                 "url": tags.get("website") or tags.get("contact:website") or "",
+                "hours": readable_hours(tags["opening_hours"]) if "opening_hours" in tags else "",
+                # The month a mapper last confirmed the hours, where one was recorded.
+                "hours_at": (tags.get("check_date:opening_hours") or tags.get("check_date", ""))[:7]
+                if "opening_hours" in tags
+                else "",
                 "months": "",
                 "lon": position["lon"],
                 "lat": position["lat"],
@@ -158,6 +238,13 @@ def fit_floor(fit):
     return 15
 
 
+def set_fit(place, fit):
+    # A fifth of the tagging bonus is kept, only to order places with equal fits.
+    place["score"] = fit / 100 + place["bonus"] / 5
+    place["floor"] = fit_floor(fit)
+    place["fit"] = fit
+
+
 def attach_fit(places):
     """Where rank.py has scored a place, that score replaces the category weight.
 
@@ -169,10 +256,7 @@ def attach_fit(places):
         path = FIT_DIR / f"{place['id']}.json"
         if not path.exists():
             continue
-        fit = json.loads(path.read_text())["fit"]
-        # A fifth of the tagging bonus is kept, only to order places with equal fits.
-        place["score"] = fit / 100 + place["bonus"] / 5
-        place["floor"] = fit_floor(fit)
+        set_fit(place, json.loads(path.read_text())["fit"])
         scored += 1
     print(f"fit: {scored} of {len(places)} places ranked by fit score, the rest by category")
     return scored
@@ -180,7 +264,7 @@ def attach_fit(places):
 
 def attach_records(places):
     """Add the record written by enrich.py to each place that has one."""
-    with_record = described = closed = 0
+    with_record = own_site = other_sites = closed = 0
     for place in places:
         path = RECORD_DIR / f"{place['id']}.json"
         if not path.exists():
@@ -195,10 +279,13 @@ def attach_records(places):
             place["score"] *= 0.3
             place["floor"] = max(place["floor"], CLOSED_FLOOR)
             closed += 1
-        # Only what a place's own website supports is published. A record built from
-        # other sites alone may describe a different business with a similar name.
-        if record["matches_place"]:
-            described += 1
+        # A record is published when the place's own website supports it, or when the
+        # model found other sites reliable enough to write a summary from. Where it
+        # doubted that they describe this place, it left the summary empty, and the
+        # rest of such a record may be about a namesake.
+        if record["matches_place"] or (record["summary"] and record["press_note"]):
+            own_site += record["matches_place"]
+            other_sites += not record["matches_place"]
             about.update(
                 what=record["kind"],
                 about=record["summary"],
@@ -208,9 +295,53 @@ def attach_records(places):
             )
         place["about"] = about
     print(
-        f"records: {with_record} of {len(places)} places have one; {described} described "
-        f"from their own website, {closed} reported closed"
+        f"records: {with_record} of {len(places)} places have one; {own_site} described "
+        f"from their own website, {other_sites} from other sites, "
+        f"{with_record - own_site - other_sites} not published, {closed} reported closed"
     )
+
+
+def apply_corrections(places, config):
+    """Apply hand corrections from private/corrections.toml, if the file exists.
+
+    Each [[place]] names a place exactly as the map does, with `id` as well when
+    two places share the name, and may set:
+
+      fit       0 to 100, in place of the model's score
+      category  a category id from categories.toml, in place of OpenStreetMap's
+      what      the kind of place shown at the top of its popup
+    """
+    if not CORRECTIONS.exists():
+        return
+    with open(CORRECTIONS, "rb") as f:
+        corrections = tomllib.load(f).get("place", [])
+    categories = {category["id"]: category for category in config["category"]}
+    for fix in corrections:
+        unknown = set(fix) - {"name", "id", "fit", "category", "what"}
+        assert not unknown, f"corrections: {fix.get('name')} has unknown keys {unknown}"
+        found = [
+            place
+            for place in places
+            if place["name"] == fix["name"] and fix.get("id", place["id"]) == place["id"]
+        ]
+        if len(found) != 1:
+            listing = ", ".join(f"{p['id']} ({p['sub']})" for p in found) or "none"
+            raise SystemExit(
+                f'corrections: "{fix["name"]}" should match one place but matches '
+                f"{len(found)}: {listing}. Add or fix its id."
+            )
+        place = found[0]
+        if "category" in fix:
+            category = categories[fix["category"]]
+            place.update(cat=category["id"], fam=category["family"], sub=category["label"])
+            if "fit" not in place:
+                place["score"] = category["weight"] + place["bonus"]
+                place["floor"] = category["floor"]
+        if "fit" in fix:
+            set_fit(place, fix["fit"])
+        if "what" in fix:
+            place.setdefault("about", {})["what"] = fix["what"]
+    print(f"corrections: {len(corrections)} applied from {CORRECTIONS.name}")
 
 
 def build_trees(raw, config):
@@ -408,6 +539,12 @@ def to_feature(item, mz_off):
     if item["kind"] == "place":
         properties["id"] = item["id"]
         properties["sub"] = item["sub"]
+        if item["top"]:
+            properties["top"] = 1
+        if item["hours"]:
+            properties["hours"] = item["hours"]
+        if item["hours_at"]:
+            properties["hours_at"] = item["hours_at"]
     properties.update({key: value for key, value in item.get("about", {}).items() if value})
     if item["url"]:
         properties["url"] = item["url"]
@@ -436,6 +573,11 @@ def main():
     places = drop_duplicates(build_places(raw_places, categories))
     scored = attach_fit(places)
     attach_records(places)
+    apply_corrections(places, categories)
+    for place in places:
+        closed = place.get("about", {}).get("closed")
+        place["top"] = place.get("fit", 0) >= scoring["top_fit"] and not closed
+    print(f"top picks: {sum(p['top'] for p in places)} places score {scoring['top_fit']} or more")
     trees, tree_counts = build_trees(raw_trees, edibles)
     patches, patch_counts = build_patches(raw_berries, edibles)
 

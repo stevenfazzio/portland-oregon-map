@@ -9,13 +9,21 @@ import {
 const BASE_STYLE = "https://tiles.openfreemap.org/styles/positron";
 const INK = "#22262a";
 
+// The basemap's path names cover pavements named after their street and indoor
+// corridors as well as trails, and nothing in the tiles tells them apart. A
+// path counts as a trail when its name contains one of these.
+const TRAIL_WORDS = [
+  "Trail", "Loop", "Corridor", "Greenway", "Esplanade", "Path", "Firelane",
+  "Leif Erikson", "Springwater",
+];
+
 // Colour marks the family a feature belongs to. A tree or berry patch is a filled
 // dot while it is in season and a ring when it is not.
 const FAMILIES = [
-  { id: "food", label: "Food", color: "#eb6834" },
+  { id: "food", label: "Food", color: "#e2512f" },
   { id: "drink", label: "Drink", color: "#eda100" },
   { id: "music_screen", label: "Music and film", color: "#2a78d6" },
-  { id: "shops", label: "Shops and markets", color: "#e87ba4" },
+  { id: "shops", label: "Shops and markets", color: "#c2409a" },
   { id: "growing", label: "Fruit, nuts and berries", color: "#1baf7a", seasonal: true },
   { id: "landmark", label: "Parks and landmarks", color: "#5c6166" },
   { id: "other", label: "Everything else", color: "#a3a6a1" },
@@ -39,6 +47,9 @@ const IN_SEASON = [
   ["in", ["concat", ",", ["to-string", MONTH], ","], ["coalesce", ["get", "months"], ""]],
 ];
 const MIN_ZOOM = ["case", IN_SEASON, ["get", "mz"], ["coalesce", ["get", "mz_off"], ["get", "mz"]]];
+// The best-scoring places. They are the ones that show when the map is zoomed out;
+// a bold name and a larger dot keep them recognisable once it is zoomed in.
+const TOP = ["has", "top"];
 
 function featureFilter() {
   const shown = FAMILIES.map((f) => f.id).filter((id) => !hidden.has(id));
@@ -79,6 +90,37 @@ function restyle(style) {
   };
   const after = style.layers.findIndex((l) => l.id === "highway_path");
   style.layers.splice(after + 1, 0, trail);
+
+  // The basemap carries trail names from zoom 13 but shows them only from 15.5,
+  // in pale grey. Name the trails early, in the trail colour, and leave every
+  // other path name as it was.
+  const pathNames = style.layers.find((l) => l.id === "highway-name-path");
+  if (pathNames) {
+    const name = ["coalesce", ["get", "name"], ""];
+    const isTrail = ["any", ...TRAIL_WORDS.map((word) => ["in", word, name])];
+    const trailNames = {
+      ...structuredClone(pathNames),
+      id: "trail-name",
+      minzoom: 13,
+      filter: ["all", pathNames.filter, isTrail],
+      paint: {
+        "text-color": "#7a4520",
+        "text-halo-color": "rgba(255, 255, 255, 0.9)",
+        "text-halo-width": 1.2,
+      },
+    };
+    // The name runs along the trail, and a winding one rarely has a straight
+    // stretch long enough. Small type, more attempts and sharper bends fit the most.
+    Object.assign(trailNames.layout, {
+      "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10.5, 16, 12],
+      "symbol-spacing": 120,
+      "text-max-angle": 60,
+    });
+    pathNames.filter = ["all", pathNames.filter, ["!", isTrail]];
+    // Above the street names, so that a trail's name wins where the two meet.
+    const streets = style.layers.findIndex((l) => l.id === "highway-name-major");
+    style.layers.splice(streets + 1, 0, trailNames);
+  }
 
   style.state = { month: { default: month } };
   return style;
@@ -131,10 +173,11 @@ function addFeatures(map) {
       // Only what has months can be out of season, so only it has a ring to show.
       "icon-image": ["concat", ["case", IN_SEASON, "dot-", "ring-"], ["get", "fam"]],
       "text-field": ["get", "name"],
-      "text-font": ["Noto Sans Regular"],
+      "text-font": ["case", TOP, ["literal", ["Noto Sans Bold"]], ["literal", ["Noto Sans Regular"]]],
+      "icon-size": ["case", TOP, 1.3, 1],
       "text-size": ["interpolate", ["linear"], ["zoom"], 11, 11, 16, 12.5],
       "text-variable-anchor": ["left", "right", "top", "bottom"],
-      "text-radial-offset": 0.75,
+      "text-radial-offset": ["case", TOP, 0.9, 0.75],
       "text-justify": "auto",
       "text-max-width": 8,
       "text-padding": 3,
@@ -224,10 +267,13 @@ function openPopup(map, feature) {
         .map((key) => FEATURE_WORDS[key] ?? key.replaceAll("_", " "));
       box.append(el("p", { textContent: `Has ${words.join(", ")}.` }));
     }
-    const osmType = { n: "node", w: "way", r: "relation" }[p.id[0]];
-    const links = [["OpenStreetMap", `https://www.openstreetmap.org/${osmType}/${p.id.slice(1)}`]];
-    if (/^https?:\/\//.test(p.url ?? "")) links.unshift(["Website", p.url]);
-    box.append(linkRow(links));
+    if (p.hours) {
+      // "2025-10" is the month a mapper last confirmed the hours, where one was recorded.
+      const [year, month] = (p.hours_at ?? "").split("-");
+      const checked = year && month ? ` (checked ${MONTHS[month - 1]} ${year})` : "";
+      box.append(el("p", { textContent: `Hours: ${p.hours}${checked}` }));
+    }
+    if (/^https?:\/\//.test(p.url ?? "")) box.append(linkRow([["Website", p.url]]));
   }
   // Near the map's edge a popup hangs to one side of its point. On a phone it has
   // to be narrow enough to fit there: a popup half as wide again as itself, plus
@@ -265,6 +311,9 @@ function buildKey(map) {
     });
     key.appendChild(document.createElement("li")).appendChild(button);
   }
+  // Not a filter: it explains the one mark that cuts across every family.
+  const label = el("span", {}, el("strong", { textContent: "Bold name" }), ": a top pick");
+  key.appendChild(el("li", { className: "top-pick" }, el("span", { className: "swatch" }), label));
 }
 
 function buildMonths(map, species) {

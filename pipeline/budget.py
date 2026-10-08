@@ -15,7 +15,7 @@ import threading
 
 from common import ROOT
 
-BUDGET_USD = 40.00
+BUDGET_USD = 50.00
 LEDGER = ROOT / "private" / "spend.jsonl"
 _lock = threading.Lock()  # paid calls run on several threads; ledger lines must not interleave
 

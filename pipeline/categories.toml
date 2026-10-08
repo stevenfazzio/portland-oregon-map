@@ -29,6 +29,9 @@ plant_cell_px = 440
 # would wait behind weaker places elsewhere.
 admit_by = [[0.80, 13], [0.65, 14], [0.50, 15]]
 last_zoom = 17        # everything left over appears one zoom after this
+# A place with a fit score of at least this is marked as a top pick, with a bold
+# name and a larger dot, so that it still stands out once the map is zoomed in.
+top_fit = 72
 
 [[category]]
 id = "record_shop"
