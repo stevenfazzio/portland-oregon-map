@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Portland, Oregon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <header class="panel title">
+      <h1>Portland, Oregon</h1>
+      <output id="zoom" title="Zoom level"></output>
+      <details id="key-box">
+        <summary>Key</summary>
+        <ul id="key" aria-label="Show or hide a kind of place"></ul>
+      </details>
+    </header>
+
+    <details class="panel season">
+      <summary>Ripe in <strong id="month-name"></strong></summary>
+      <p id="ripe" aria-live="polite"></p>
+      <div id="months" role="group" aria-label="Month"></div>
+    </details>
+
+    <p id="notice" hidden></p>
+
+    <script type="module" src="map.js"></script>
+  </body>
+</html>
