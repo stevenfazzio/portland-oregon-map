@@ -16,6 +16,7 @@ patches come forward when they are in season.
     site/data/  What the build writes for the page to load (not committed)
     compare/    A local page for judging pairs of places, used to tune the scoring
     data/raw/   Raw fetches (not committed)
+    gh-pages    A branch holding only the built site, as served by GitHub Pages
     private/    Pairs to judge and the answers given (not committed)
 
 ## Build
@@ -106,6 +107,15 @@ What this cannot tell you:
     cd site && python3 -m http.server 8765 --bind 127.0.0.1
 
 Then open <http://127.0.0.1:8765/>.
+
+## Publish
+
+    uv run pipeline/publish.py --dry-run   # list what would be published
+    uv run pipeline/publish.py             # push site/ to the gh-pages branch
+
+The built data is not kept on `main`, so the site is published from a separate
+`gh-pages` branch. Each publish replaces that branch with a single commit of the
+current `site/` folder; it has no history worth keeping.
 
 ## Tune
 
